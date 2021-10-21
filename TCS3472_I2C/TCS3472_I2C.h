@@ -1,3 +1,9 @@
+/*  
+    Library from Karl Maxwell to control a TAOS TCS3472 Color Light Sensor with IR Filter via I2C
+    https://os.mbed.com/users/karlmaxwell67/code/TCS3472_I2C/
+    DATASHEET: https://cdn-shop.adafruit.com/datasheets/TCS34725.pdf
+
+*/
 #ifndef TCS3472_I2C_H
 #define TCS3472_I2C_H
 #include "mbed.h"
