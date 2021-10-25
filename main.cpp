@@ -2,10 +2,9 @@
  * Copyright (c) 2019 ARM Limited
  * SPDX-License-Identifier: Apache-2.0
  */
-#include "TCS3472_I2C.h"
 #include "mbed.h"
-#include "MMA8451Q.h"
-#include "Si7021.h"
+#include "hardware.h"
+
 #define PERIOD_MEASUREMENT_TEST 2000000
 #define PERIOD_MEASUREMENT_NORMAL 30000000
 #define MMA8451Q_SENSOR_ADDR	0x1d
@@ -13,20 +12,6 @@
 int rgb_readings[4]; // declare a 4 element array to store RGB sensor readings
 
 enum Mode{TEST,NORMAL,ADVANCED};
-
-MMA8451Q accel_sensor(PB_9, PB_8,0x1d<<1);
-TCS3472_I2C rgb_sensor (PB_9, PB_8);
-Si7021 tempHumSensor(PB_9, PB_8);
-
-DigitalOut TestMode_LED(LED1);
-DigitalOut NormalMode_LED(LED2);
-DigitalOut AdvancedMode_LED(LED3);
-InterruptIn button(PB_2);
-AnalogIn moistureSensor(PA_0);
-AnalogIn lightSensor(PA_4);
-BusOut RGB_LED(PH_0,PH_1,PB_13);
-
-Ticker periodicMeasurement;
 
 char *dominant_color;
 bool read_sensors_flag;

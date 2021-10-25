@@ -11213,6 +11213,16 @@
               <FileType>5</FileType>
               <FilePath>mbed_config.h</FilePath>
             </File>
+            <File>
+              <FileName>hardware.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\hardware.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>hardware.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\hardware.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -11227,6 +11237,36 @@
               <FileName>TCS3472_I2C.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\TCS3472_I2C\TCS3472_I2C.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Accel_MMA8451Q</GroupName>
+          <Files>
+            <File>
+              <FileName>MMA8451Q.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\Accel_MMA8451Q\MMA8451Q.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>MMA8451Q.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Accel_MMA8451Q\MMA8451Q.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Si7021</GroupName>
+          <Files>
+            <File>
+              <FileName>Si7021.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\Si7021\Si7021.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>Si7021.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Si7021\Si7021.h</FilePath>
             </File>
           </Files>
         </Group>
