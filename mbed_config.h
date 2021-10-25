@@ -102,7 +102,7 @@
 #define MBED_CONF_FAT_CHAN_FF_NORTC_MDAY                                      1                                                                                                // set by library:fat_chan
 #define MBED_CONF_FAT_CHAN_FF_NORTC_MON                                       1                                                                                                // set by library:fat_chan
 #define MBED_CONF_FAT_CHAN_FF_NORTC_YEAR                                      2017                                                                                             // set by library:fat_chan
-#define MBED_CONF_FAT_CHAN_FF_PRINT_FLOAT                                     0                                                                                                // set by library:fat_chan
+#define MBED_CONF_FAT_CHAN_FF_PRINT_FLOAT                                     1                                                                                                // set by library:fat_chan
 #define MBED_CONF_FAT_CHAN_FF_PRINT_LLI                                       0                                                                                                // set by library:fat_chan
 #define MBED_CONF_FAT_CHAN_FF_SFN_BUF                                         12                                                                                               // set by library:fat_chan
 #define MBED_CONF_FAT_CHAN_FF_STRF_ENCODE                                     3                                                                                                // set by library:fat_chan
