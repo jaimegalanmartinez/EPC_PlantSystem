@@ -2,10 +2,14 @@
 #include "TCS3472_I2C/TCS3472_I2C.h"
 #include "Accel_MMA8451Q/MMA8451Q.h"
 #include "Si7021/Si7021.h"
+#include "GPS/MBed_Adafruit_GPS.h"
 
-MMA8451Q accel_sensor(PB_9, PB_8,0x1d<<1);
+#define MMA8451Q_SENSOR_ADDR	0x1C
+
+MMA8451Q accel_sensor(PB_9, PB_8,MMA8451Q_SENSOR_ADDR << 1);
 TCS3472_I2C rgb_sensor (PB_9, PB_8);
 Si7021 tempHumSensor(PB_9, PB_8);
+Adafruit_GPS GPS_sensor(new BufferedSerial(PA_9, PA_10, 9600));
 
 DigitalOut TestMode_LED(LED1);
 DigitalOut NormalMode_LED(LED2);
