@@ -19,6 +19,6 @@ extern DigitalOut TestMode_LED, NormalMode_LED, AdvancedMode_LED;
 extern InterruptIn button;
 extern AnalogIn moistureSensor, lightSensor;
 extern BusOut RGB_LED;
-extern Ticker periodicMeasurement;
+extern Ticker periodicMeasurement, halfHourTicker;
 
 #endif

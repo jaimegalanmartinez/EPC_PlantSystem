@@ -18,6 +18,8 @@ InterruptIn button(PB_2);
 AnalogIn moistureSensor(PA_0);
 AnalogIn lightSensor(PA_4);
 BusOut RGB_LED(PH_0,PH_1,PB_13);
+              //LSB      MSB
 
 Ticker periodicMeasurement;
+Ticker halfHourTicker;
 

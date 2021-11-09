@@ -11223,6 +11223,16 @@
               <FileType>5</FileType>
               <FilePath>.\hardware.h</FilePath>
             </File>
+            <File>
+              <FileName>log_values_sensors.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\log_values_sensors.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>log_values_sensors.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\log_values_sensors.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
