@@ -2,6 +2,11 @@
  * Copyright (c) 2019 ARM Limited
  * SPDX-License-Identifier: Apache-2.0
  */
+ /*EPC PlantSystem project
+* @Authors: Jaime Galan Martinez
+*						Victor Aranda Lopez
+*/
+
 #include "mbed.h"
 #include "hardware.h"
 #include "log_values_sensors.h"
@@ -21,15 +26,6 @@
 #define STACK_SIZE_OUTPUT_THREAD 1024
 #define STACK_SIZE_MEASURE_THREAD 2048
 //Ranges for sensor data
-/*#define TEMPERATURE_MAX 28
-#define TEMPERATURE_MIN 15
-#define HUMIDITY_MAX 60
-#define HUMIDITY_MIN 40
-#define LIGHT_MAX 100
-#define LIGHT_MIN 20
-#define MOISTURE_MAX 60
-#define MOISTURE_MIN 20
-*/
 #define TEMPERATURE_MAX 28
 #define TEMPERATURE_MIN 15
 #define HUMIDITY_MAX 60
@@ -38,7 +34,10 @@
 #define LIGHT_MIN 20
 #define MOISTURE_MAX 42
 #define MOISTURE_MIN 20
-
+/*
+ * Structure to send the values measured by the sensor thread to the main thread and
+ * also to send this same values to the output thread from the main thread 
+ */
 typedef struct {
 		float temperature;
 		float humidity;
@@ -47,13 +46,14 @@ typedef struct {
 		float accel_values[3];
 	  int rgb_readings[4];
 		char dominant_color;
-	
 } mail_t;
-
+/*
+ * Structure to send the values stored and calculated in the log of main thread 
+ * to the output thread
+ */
 typedef struct {
 		Log log_values;
 		char dominant_color;
-
 } mail_t_logs;
 
 //Mailbox for communicate the measure thread with the main thread
@@ -65,12 +65,14 @@ Mail<mail_t_logs, MAIL_QUEUE_SIZE> print_logs_mail_box;
 
 EventFlags event_flags;
 Mutex serial_mutex;
+//Possible states of the state machine
 enum Mode{TEST,NORMAL,ADVANCED};
 //Threads
-Thread measure_thread(osPriorityNormal, STACK_SIZE_MEASURE_THREAD, nullptr, nullptr);//
-Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf)
-/////////////////////////////////////////////
+Thread measure_thread(osPriorityNormal, STACK_SIZE_MEASURE_THREAD, nullptr, nullptr);//Measures all elements except the GPS
+Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
 
+/////////////////////////////////////////////
+//Global variables
 Mode mode = TEST;
 volatile bool user_button_flag = false;
 bool half_hour_flag = false;
@@ -95,6 +97,7 @@ int main() {
 	bool full_hour_flag = false;
 	initLog(&log_values);
 	uint32_t flags_read = 0;
+	
 	//RGB_LED OFF
 	RGB_LED=0b000;
 	//User Button mode and fall interrupt
@@ -103,8 +106,8 @@ int main() {
 	//Starting threads
 	measure_thread.start(callback(measure_sensors));
 	output_thread.start(callback(GPS_and_print_info_system));
-	//LEDs off
-	TestMode_LED     = OFF;
+	//LEDs off except TEST
+	TestMode_LED     = ON;
 	NormalMode_LED   = OFF;
 	AdvancedMode_LED = OFF;
 	//Set high interrupt
@@ -112,32 +115,30 @@ int main() {
 	rgb_sensor.setHighInterruptThreshold(20000);
 	rgb_sensor.setLowInterruptThreshold(100);*/
   while(true) {
-		//Change mode
+		//If button is pressed: Change mode
 		if(user_button_flag){
 			user_button_flag = false;
-			if(mode == TEST){
+			if(mode == TEST){//To NORMAL
 				mode = NORMAL;
 				TestMode_LED   = OFF;
 				NormalMode_LED = ON;
 				halfHourTicker.attach_us(&half_hour_irq,PERIOD_HALF_HOUR);
-				
-			}else if (mode == NORMAL){ 
+				initLog(&log_values);//Reset the log to start again
+			}else if (mode == NORMAL){ //To ADVANCED
 				mode = ADVANCED;
 				NormalMode_LED   = OFF;
 				AdvancedMode_LED = ON;
 				halfHourTicker.detach();
 				half_hour_flag=false;
 				full_hour_flag=false;
-					
-			}else if (mode == ADVANCED){ 
+			}else if (mode == ADVANCED){//To TEST
 				mode = TEST;
 				AdvancedMode_LED = OFF;
 				TestMode_LED = ON;
 			}
 		}//user button if	
-		switch (mode){
+		switch (mode){//State machine
 			case TEST:
-				TestMode_LED = 1;
 				//NormalMode_LED   = 0;
 				//AdvancedMode_LED = 0;
 				flags_read = event_flags.wait_any(EV_FLAG_READ_SENSORS,0);
@@ -163,7 +164,7 @@ int main() {
 					//Read mail_data from sensor mailbox (sensors data) and put it in print mailbox
 					mail_t *mail_data_sensor = (mail_t *) sensor_data_mail_box.try_get();
 					if(mail_data_sensor != NULL){
-						//Check errors
+						//Check errors (out of bound values) and print errors in RGB led
 						checkRange_and_set_RGB_color(mail_data_sensor->temperature,mail_data_sensor->humidity,mail_data_sensor->light,mail_data_sensor->moisture,mail_data_sensor->accel_values,mail_data_sensor->dominant_color);
 						//Update log_values with the new recorded values
 						updateLog(&log_values,mail_data_sensor->temperature,mail_data_sensor->humidity,mail_data_sensor->light,mail_data_sensor->moisture,mail_data_sensor->dominant_color,mail_data_sensor->accel_values);
@@ -174,12 +175,15 @@ int main() {
 				}//flag_read_sensors
 				if(half_hour_flag){
 					half_hour_flag = false;
-					if(full_hour_flag){
+					if(full_hour_flag){//If 1 hour elapsed
 						full_hour_flag = false;
+						//Calculate average values
 						calculate_average_sensors_data(&log_values);
+						//Calculate dominant color
 						char dominant_color_system = calculate_dominant_color_from_logs(log_values);
-						//send log info to output thread
+						//Send log info to output thread
 						put_log_sensor_data_to_print_mail_logs(log_values, dominant_color_system);
+						//Reset log values to start over for the next hour
 						initLog(&log_values);
 					}else
 						full_hour_flag = true;
@@ -204,7 +208,7 @@ void user_button()
 
 /*
 	Normal ranges:
-Temperature: 18-28?C
+Temperature: 18-28 C
 Humidity: 40-60%
 Ambient light: 20-100%
 Soil humidity: 40-60%
@@ -255,13 +259,13 @@ char set_dominant_color(int rgb_readings[4]){
 }
 
 void set_color_RGB_led(char dominant_color){
-	if(dominant_color == 'R'){
+	if(dominant_color == 'R'){//If max=RED
 		RGB_LED=0b001;
 	}else if(dominant_color == 'G'){//If max=Green
 		RGB_LED=0b010;
 	}else if(dominant_color == 'B'){//If max=Blue
 		RGB_LED=0b100;	
-	}else if(dominant_color == 'N'){ //
+	}else if(dominant_color == 'N'){ ////If max=None
 		RGB_LED=0b000;
 	}
 }
@@ -270,8 +274,8 @@ void set_color_RGB_led(char dominant_color){
 /**
 * Function put_sensor_data_on_Mailbox
 * Description: Reading light sensor data, put in on sensor mailbox 
-* and activate event flag EV_FLAG_READ_LIGHT to inform the main thread. 
-* Executed each LIGHT_SENSOR_READ_CADENCY (2s) in the eventQueue of measure_thread
+* and activate event flag EV_FLAG_READ_SENSORS to inform the main thread. 
+* Executed each PERIOD_MEASUREMENT_TEST (2s) of PERIOD_MEASUREMENT_NORMAL (30s) in the eventQueue of measure_thread
 */
 void put_sensor_data_on_Mailbox(void)
 {
@@ -291,30 +295,26 @@ void put_sensor_data_on_Mailbox(void)
 		mail_data_sensors->light = lightSensor.read_u16()*100.0/65536.0;
 		//Moisture sensor
 		mail_data_sensors->moisture = moistureSensor.read_u16()*100.0/65536.0;
-		//RGB sensor
-		//RGB green predominant, detecting plant
+		//RGB sensor, and calculares the dominant color
 		rgb_sensor.getAllColors(rgb_readings); // read the sensor to get red, green, and blue color data along with overall brightness
 		mail_data_sensors->rgb_readings[0] = rgb_readings[0];		//Clear
 		mail_data_sensors->rgb_readings[1] = rgb_readings[1];		//Red
 		mail_data_sensors->rgb_readings[2] = rgb_readings[2];		//Green
 		mail_data_sensors->rgb_readings[3] = rgb_readings[3];		//Blue
 		mail_data_sensors->dominant_color = set_dominant_color(rgb_readings);
-		//axis Z plant steady  axis X or axis Y out of range
 		//Acceleration sensor
 		accel_sensor.getAccAllAxis(accel_values);
 		mail_data_sensors->accel_values[0] = accel_values[0]; // Accel x
 		mail_data_sensors->accel_values[1] = accel_values[1]; // Accel y
 		mail_data_sensors->accel_values[2] = accel_values[2]; // Accel z
-		
+		//Send mail
     sensor_data_mail_box.put(mail_data_sensors);
 		event_flags.set(EV_FLAG_READ_SENSORS);		
 }
 
-
-
 /////////////////////////////////////////////////////////////////////////////////////
 /**
-* Function put_sensor_data_to_print_mail
+* Function put_sensor_data_to_print_mail, executed by the main thread.
 * @param mail_t *mail_data_sensor 
 * Description:  Get the mail data from sensor mailbox, put in on print mailbox 
 * and activate event flag EV_FLAG_PRINT_INFO to print the light value.
@@ -340,16 +340,17 @@ void put_sensor_data_to_print_mail(mail_t *mail_data_sens){
 		mail_data_print->accel_values[0] = mail_data_sens->accel_values[0]; // Accel x
 		mail_data_print->accel_values[1] = mail_data_sens->accel_values[1]; // Accel y
 		mail_data_print->accel_values[2] = mail_data_sens->accel_values[2]; // Accel z
-	
+		
 		print_mail_box.put(mail_data_print);
 		event_flags.set(EV_FLAG_PRINT_INFO);	
 }
 
 /**
 * Function put_log_sensor_data_to_print_mail_logs
-* @param Log log_values 
-* Description:  Get the mail data from sensor mailbox, put in on print mailbox 
-* and activate event flag EV_FLAG_PRINT_INFO to print the light value.
+* @param Log log_values Stores teh max, min, avg values of recorded measurements
+* @param char dominant_color has a 'R','G','B' or 'N' depending of the dominant color of that hour
+* Description:  Gets the log values of the main thread and dominant color of that hour and put them in on print mailbox
+* Finally, it activates event flag EV_FLAG_PRINT_INFO_LOGS to print the log.
 */
 void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_color){
 	
@@ -379,12 +380,13 @@ void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_c
 		mail_data_print->log_values.accel_y_min = log_hour_values.accel_y_min;
 		mail_data_print->log_values.accel_z_max = log_hour_values.accel_z_max; // Accel z
 		mail_data_print->log_values.accel_z_min = log_hour_values.accel_z_min;
-																																					
-	
+																																				
 		print_logs_mail_box.put(mail_data_print);
 		event_flags.set(EV_FLAG_PRINT_INFO_LOGS);	
 }
-
+/*
+ * Converts the 'R','G','B' or 'N' char to strings to later print the dominant color in serial
+ */
 char const* get_str_dominant_color(char dominant_color){
 	char const *color_dominant_detected;
 	if(dominant_color == 'R'){
@@ -405,13 +407,12 @@ char const* get_str_dominant_color(char dominant_color){
 //MEASURE THREAD 
 ///////////////////////////////////////////////////////////////////////////////////
 void measure_sensors(void){
-	
+	//Init
 	if(!tempHumSensor.check()){
 			serial_mutex.lock();
 			printf("Temperature and humidity sensor error");
 			serial_mutex.unlock();
 		}
-	
 	//Turn on color sensor
 	//Get ENABLE register		
 	rgb_sensor.enablePowerAndRGBC();
@@ -419,8 +420,7 @@ void measure_sensors(void){
 	rgb_sensor.setWaitTime(1500);
 	
 	while(true) {
-		
-		if(mode == TEST || mode == NORMAL){
+		if(mode == TEST || mode == NORMAL){//If TEST or NORMAL, gets measurements
 			put_sensor_data_on_Mailbox();
 		}
 		if(mode == TEST){
@@ -439,13 +439,13 @@ void measure_sensors(void){
 * Function print_info_system
 * Description: Task executed by the output thread to print system info:
 * When it receives the event flag EV_FLAG_PRINT_INFO, retrieves from print mailbox
-* the light value, convert it to percentage and print system info.
-* "State, season, light_value %, threshold: 41.2%"
+* the values to print.
+* Additionaly, if it receives EV_FLAG_PRINT_INFO_LOGS, retrieves from print_logs_mail_box 
+* mailbox the log and dominant colorn to print.
 */ 
 void GPS_and_print_info_system(void){
-	char const *stringsStates[] = {"TEST", "NORMAL", "ADVANCED"};
 	uint32_t flags_read_serial_th;
-	
+	//Init GPS
 	GPS_sensor.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); //these commands are defined in MBed_Adafruit_GPS.h; a link is provided there for command creation
   GPS_sensor.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
   GPS_sensor.sendCommand(PGCMD_ANTENNA);
@@ -460,6 +460,7 @@ void GPS_and_print_info_system(void){
 			//printf("Fail to parse\n");
 					;
 		}
+		//Reads if there is anything to print
 		flags_read_serial_th = event_flags.wait_any(EV_FLAG_PRINT_INFO | EV_FLAG_PRINT_INFO_LOGS,0);//Wait for flag to send the information
 		
 		if(flags_read_serial_th == EV_FLAG_PRINT_INFO){

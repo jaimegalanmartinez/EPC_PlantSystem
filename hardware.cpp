@@ -22,4 +22,3 @@ BusOut RGB_LED(PH_0,PH_1,PB_13);
 
 Ticker periodicMeasurement;
 Ticker halfHourTicker;
-
