@@ -6,8 +6,8 @@
 #include "hardware.h"
 #include "log_values_sensors.h"
 #define PERIOD_MEASUREMENT_TEST 2000000 //2s
-#define PERIOD_MEASUREMENT_NORMAL 2000000 //30000000 30s
-#define PERIOD_HALF_HOUR 5000000 //1800000000
+#define PERIOD_MEASUREMENT_NORMAL 2000000 //30000000 //30s 
+#define PERIOD_HALF_HOUR  5000000//1800000000
 #define ON  1
 #define OFF 0
 #define MAIL_QUEUE_SIZE 1
@@ -74,7 +74,6 @@ Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);
 Mode mode = TEST;
 volatile bool user_button_flag = false;
 bool half_hour_flag = false;
-
 void half_hour_irq();
 void user_button();
 void checkRange_and_set_RGB_color(float temperature,float humidity,float light_value_f,float moisture_value_f,float accel_values [],char dominantColor);
@@ -161,16 +160,16 @@ int main() {
 					event_flags.clear(EV_FLAG_READ_SENSORS);
 					//when it's received send event to output thread to print system info:
 					//Read mail_data from sensor mailbox (sensors data) and put it in print mailbox
-					mail_t *mail_data_sensor = (mail_t *) sensor_data_mail_box.try_get();
-					if(mail_data_sensor != NULL){
+					mail_t *mail_data_sens = (mail_t *) sensor_data_mail_box.try_get();
+					if(mail_data_sens != NULL){
 						//Check errors
-						checkRange_and_set_RGB_color(mail_data_sensor->temperature,mail_data_sensor->humidity,mail_data_sensor->light,mail_data_sensor->moisture,mail_data_sensor->accel_values,mail_data_sensor->dominant_color);
+						checkRange_and_set_RGB_color(mail_data_sens->temperature,mail_data_sens->humidity,mail_data_sens->light,mail_data_sens->moisture,mail_data_sens->accel_values,mail_data_sens->dominant_color);
 						//Update log_values with the new recorded values
-						updateLog(&log_values,mail_data_sensor->temperature,mail_data_sensor->humidity,mail_data_sensor->light,mail_data_sensor->moisture,mail_data_sensor->dominant_color,mail_data_sensor->accel_values);
+						updateLog(&log_values,mail_data_sens->temperature,mail_data_sens->humidity,mail_data_sens->light,mail_data_sens->moisture,mail_data_sens->dominant_color,mail_data_sens->accel_values);
 						//Receive sensors data from measure_thread and send it to output_thread to print info		
-						put_sensor_data_to_print_mail(mail_data_sensor);
+						put_sensor_data_to_print_mail(mail_data_sens);
 					}
-					sensor_data_mail_box.free(mail_data_sensor);
+					sensor_data_mail_box.free(mail_data_sens);
 				}//flag_read_sensors
 				if(half_hour_flag){
 					half_hour_flag = false;
@@ -401,6 +400,7 @@ char const* get_str_dominant_color(char dominant_color){
 	}
 	return color_dominant_detected;
 }
+
 ///////////////////////////////////////////////////////////////////////////////////
 //MEASURE THREAD 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +417,7 @@ void measure_sensors(void){
 	rgb_sensor.enablePowerAndRGBC();
 	rgb_sensor.enableWait();
 	rgb_sensor.setWaitTime(1500);
-	
+		
 	while(true) {
 		
 		if(mode == TEST || mode == NORMAL){
@@ -428,7 +428,7 @@ void measure_sensors(void){
 		}else if (mode == NORMAL){
 			ThisThread::sleep_for(2s);
 		} else if (mode == ADVANCED){
-		}
+		}	
 	}
 }
 
