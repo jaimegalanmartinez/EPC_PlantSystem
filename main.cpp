@@ -162,7 +162,7 @@ int main() {
 					//when it's received send event to output thread to print system info:
 					//Read mail_data from sensor mailbox (sensors data) and put it in print mailbox
 					mail_t *mail_data_sens = (mail_t *) sensor_data_mail_box.try_get();
-					if(mail_data_sensor != NULL){
+					if(mail_data_sens != NULL){
 						//Check errors (out of bound values) and print errors in RGB led
 						checkRange_and_set_RGB_color(mail_data_sens->temperature,mail_data_sens->humidity,mail_data_sens->light,mail_data_sens->moisture,mail_data_sens->accel_values,mail_data_sens->dominant_color);
 						//Update log_values with the new recorded values
