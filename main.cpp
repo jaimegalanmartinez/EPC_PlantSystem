@@ -10,8 +10,7 @@
 #include "mbed.h"
 #include "hardware.h"
 #include "log_values_sensors.h"
-#define PERIOD_MEASUREMENT_TEST 2000000 //2s
-#define PERIOD_MEASUREMENT_NORMAL 2000000 //30000000 //30s 
+
 #define PERIOD_HALF_HOUR  5000000//1800000000
 #define ON  1
 #define OFF 0
@@ -21,19 +20,19 @@
 #define EV_FLAG_PRINT_INFO (1UL << 9)
 #define EV_FLAG_PRINT_INFO_LOGS (1UL << 1)
 #define SENSORS_READ_CADENCY_TEST 2000ms
-#define SENSORS_READ_CADENCY_NORMAL 5000ms //30s
+#define SENSORS_READ_CADENCY_NORMAL 2000ms //30s
 //Stack size for threads
-#define STACK_SIZE_OUTPUT_THREAD 1024
-#define STACK_SIZE_MEASURE_THREAD 2048
+#define STACK_SIZE_OUTPUT_THREAD 2048
+#define STACK_SIZE_MEASURE_THREAD 512
 //Ranges for sensor data
-#define TEMPERATURE_MAX 28
+#define TEMPERATURE_MAX 22
 #define TEMPERATURE_MIN 15
-#define HUMIDITY_MAX 60
-#define HUMIDITY_MIN 40
-#define LIGHT_MAX 100
+#define HUMIDITY_MAX 50
+#define HUMIDITY_MIN 30
+#define LIGHT_MAX 75
 #define LIGHT_MIN 20
-#define MOISTURE_MAX 42
-#define MOISTURE_MIN 20
+#define MOISTURE_MAX 75
+#define MOISTURE_MIN 10
 /*
  * Structure to send the values measured by the sensor thread to the main thread and
  * also to send this same values to the output thread from the main thread 
@@ -232,7 +231,7 @@ void checkRange_and_set_RGB_color(float temperature,float humidity,float light_v
 		RGB_LED=0b110;
 	}else if(dominantColor != 'G'){
 		RGB_LED=0b011;
-	}else if( !(accel_values[2] > accel_values[1]) || !(accel_values[2] > accel_values[0])){
+	}else if( !(abs(accel_values[2]) > abs(accel_values[1])) || !(abs(accel_values[2]) > abs(accel_values[0]))){
 		RGB_LED=0b001;
 	}else if(dominantColor == 'G'){//If no errors=GREEN, detecting plant
 		RGB_LED=0b010;
@@ -424,9 +423,9 @@ void measure_sensors(void){
 			put_sensor_data_on_Mailbox();
 		}
 		if(mode == TEST){
-			ThisThread::sleep_for(2s);
+			ThisThread::sleep_for(SENSORS_READ_CADENCY_TEST);
 		}else if (mode == NORMAL){
-			ThisThread::sleep_for(2s);
+			ThisThread::sleep_for(SENSORS_READ_CADENCY_NORMAL);
 		} else if (mode == ADVANCED){
 		}	
 	}
@@ -502,4 +501,15 @@ void GPS_and_print_info_system(void){
 			}
 		}
 	}	
+}
+
+#define PULSE_TMLT //time window
+//Threshold values to trigger tap event
+#define PULSE_THSX  //threshold_value_x
+#define PULSE_THSY  //threshold_value_y
+#define PULSE_THSZ //threshold_value_z
+#define PULSE_LTCY //Latency time to hold the event conditions
+
+void detect_tap_event(){
+	
 }
