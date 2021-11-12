@@ -10,7 +10,7 @@ or double pulse
  If the ELE bit is set, the source register values will remain static until the PULSE_SRC (Reg 0x22) register is read
 */
 //readRegs(int addr, uint8_t * data, int len)
-void config_single_tap_event(){
+/*void config_single_tap_event(){
 	uint8_t threshold_value = 
 	//Thresholds can be changed in either standby or active mode
 	//Set tap detection threshold for 2g on Z
@@ -18,6 +18,8 @@ void config_single_tap_event(){
 	//3g/0.063g/count = 48 counts 0x30
 	accel_sensor.setThreshold_z_tap();
 }
+*/
+
 void detect_tap_event(float accel_value_x, float accel_value_y, float accel_value_z){
 	
 	if(accel_value_x > accel_sensor.getThreshold_x_tap()){

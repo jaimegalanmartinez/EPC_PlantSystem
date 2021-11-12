@@ -1,6 +1,10 @@
 #include "MMA8451Q.h"
  
 #define REG_WHO_AM_I      0x0D
+/*: CTRL_REG1 register (read/write)
+Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+ASLP_RATE1 ASLP_RATE0 DR2 DR1 DR0 LNOISE F_READ ACTIVE
+*/
 #define REG_CTRL_REG_1    0x2A
 #define REG_OUT_X_MSB     0x01
 #define REG_OUT_Y_MSB     0x03
@@ -35,6 +39,7 @@ Both S & D 0 1 1 1 1 1 1 1 ->
 #define BOTH_TAPS  0x7F
 //Without bit ELE
 #define SINGLE_TAP_NO_ELE 0x15 //in all axes
+#define NO_TAP_DETECTION 0x00
 /*Threshold values to trigger tap event
  *The threshold values range from 0 to 127 (7 bits expressed as an absolute value) with
  *steps of 0.063g/LSB at a fixed 8g acceleration range
@@ -42,13 +47,34 @@ Both S & D 0 1 1 1 1 1 1 1 ->
 #define REG_PULSE_THSX 0x23 //threshold_value_x
 #define REG_PULSE_THSY 0x24 //threshold_value_y
 #define REG_PULSE_THSZ 0x25 //threshold_value_z
+
+/*The Pulse Latency Timer Register is the time duration that the tap event can be read from the source register to detect the X,
+ *Y, and Z for single pulse or double pulse events without the latch enabled. The duration of any specified latency time is valid each
+ *time a single or double pulse occurs.
+*/
 #define REG_PULSE_LTCY 0x27//Latency time to hold the event conditions
 
 #define REG_PULSE_TMLT 0x26 //time window, time limit register
 /*When the low pass filter is enabled the time step doubles.
-The filter should help eliminate additional ringing after the tap signature is detected.
+* The filter should help eliminate additional ringing after the tap signature is detected.
 */
 #define REG_LOW_PASS_FILTER 0x0F
+
+/*Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+ EA AxZ AxY AxX DPE PolZ PolY PolX
+ */
+#define REG_PULSE_SRC 0x22
+
+
+//Pulse detection interrupt enabled in CTRL_REG4 (Bit 3 activated)
+#define INT_EN_PULSE 0x08
+
+//Set tap to INT1 (CTRL_REG5 BIT3 INT_CFG_PULSE = 1 -> INT1 
+//																INT_CFG_PULSE = 0 -> INT2
+#define ENABLE_INT1  0x08
+#define ENABLE_INT2  0x00
+
+#define REG_INT_SOURCE 0x0C //Interrupt status
 
 MMA8451Q::MMA8451Q(PinName sda, PinName scl, int addr) : m_i2c(sda, scl), m_addr(addr) {
     // activate the peripheral
@@ -136,6 +162,113 @@ void MMA8451Q::setThreshold_z_tap(uint8_t threshold_value) {
   uint8_t data[2] = {REG_PULSE_THSZ, threshold_value};
   writeRegs(data, 2);
 }
+
+void MMA8451Q::setupPulseConfig(uint8_t data_value){
+	uint8_t data[2] = {REG_PULSE_CFG, data_value};
+	writeRegs(data, 2);
+}
+
+
+void MMA8451Q::setTimeLimitTapDetection(uint8_t data_value){
+	uint8_t data[2] = {REG_PULSE_TMLT, data_value};
+	writeRegs(data, 2);
+}
+
+void MMA8451Q::setLatencyTimeTap(uint8_t data_value){
+	uint8_t data[2] = {REG_PULSE_LTCY, data_value};
+	writeRegs(data, 2);
+}
+
+void MMA8451Q::enablePulseInterrupt(uint8_t data_value){
+	uint8_t data[2] = {CTRL_REG4, data_value};
+	writeRegs(data, 2);
+}
+
+void MMA8451Q::routePulseInterruptBlock(uint8_t data_value){
+	uint8_t data[2] = {CTRL_REG5, data_value};
+	writeRegs(data, 2);
+}
+
+// Single Tap Only: Normal Mode, No Low Pass Filter, 400 Hz ODR (Output data rate)
+void MMA8451Q::setupSingleTap(){
+	 //Set standby-mode and 400Hz
+		uint8_t data_ctrl_reg[2] = {REG_CTRL_REG_1, 0x08};
+		writeRegs(data_ctrl_reg, 2);
+	//Enable X,Y,Z single pulse with ELE bit deactivated
+		setupPulseConfig(SINGLE_TAP_NO_ELE);
+	/*	Set Threshold 1.575g on X and 2.65g on Z
+			Note: Each step is 0.063g per count
+			1.575g/0.063g = 25 counts
+			2.65g/0.063g = 42 counts
+	*/
+		setThreshold_x_tap(0x19); //Set X Threshold to 1.575g
+		setThreshold_y_tap(0x19); //Set X Threshold to 1.575g
+		setThreshold_z_tap(0x2A); //Set Z Threshold to 2.65g
+		//Set Time Limit for Tap Detection to 50 ms, Normal Mode, No LPF
+		//Data Rate 400 Hz, time step is 0.625 ms
+		//50 ms/0.625 ms = 80 counts  80 = 0x50
+		setTimeLimitTapDetection(0x50);//data_value = time_tap_detection/time_step
+		//Set Latency Time to 300 ms
+		//Data Rate 400 Hz, time step is 1.25 ms
+		//300 ms/1.25 ms = 240 counts
+		setLatencyTimeTap(0xF0);//300ms (240 in HEX)
+		//Route INT1 to System Interrupt
+		enablePulseInterrupt(INT_EN_PULSE); //0x08 Enable Pulse Interrupt Block in System CTRL_REG4
+		routePulseInterruptBlock(ENABLE_INT1); //0x08 Route Pulse Interrupt Block to INT1 hardware Pin
+		//Put the device in ActiveMode
+		uint8_t status_ctrl_reg1 = 0;
+		readRegs(REG_CTRL_REG_1,&status_ctrl_reg1, 1);
+		status_ctrl_reg1 |= 0x01; //Bitwise OR, setting bit 0 to 1 (change mode to ACTIVE)
+		uint8_t data_ctrl[2] = {REG_CTRL_REG_1, status_ctrl_reg1}; //Put device in Active Mode
+		writeRegs(data_ctrl, 2);
+}
+
+void MMA8451Q::disableSingleTap(){
+	//Set standby-mode and 400Hz
+	uint8_t data_ctrl_reg[2] = {REG_CTRL_REG_1, 0x08};
+	writeRegs(data_ctrl_reg, 2);
+	//Disable event flag for tap detection
+	setupPulseConfig(NO_TAP_DETECTION);
+	//Put the device in ActiveMode
+	uint8_t status_ctrl_reg1 = 0;
+	readRegs(REG_CTRL_REG_1,&status_ctrl_reg1, 1);
+	status_ctrl_reg1 |= 0x01; //Bitwise OR, setting bit 0 to 1 (change mode to ACTIVE)
+	uint8_t data_ctrl[2] = {REG_CTRL_REG_1, status_ctrl_reg1}; //Put device in Active Mode
+	writeRegs(data_ctrl, 2);
+}
+
+/*void MMA8451Q::detect_interrupt_generated(){
+	//READ System Interrupt Status Source Register 0x0C
+	uint8_t interrupt_status_data = 0;
+	readRegs(REG_INT_SOURCE,&interrupt_status_data, 1);
+	if (interrupt_status_data == 0x08){ //SRC_PULSE = 1
+		//Interrupt was generated due to single and/or double pulse event
+		
+	}else if (interrupt_status_data == 0x04){ //SRC_FF_MT = 1
+		//Indicates that the freefall/motion function interrupt is active
+	}
+}
+*/
+
+char MMA8451Q::detectSingleTap(void){
+	char isDetected = 'N'; //not detected
+	uint8_t data_pulse_src = 0;
+   readRegs(REG_PULSE_SRC, &data_pulse_src, 1);
+	//Bit 7 Bit 6 Bit 5 Bit 4 Bit 3 Bit 2 Bit 1 Bit 0
+	//EA AxZ AxY AxX DPE PolZ PolY PolX
+	//EA active (bit 7)- one or more interrupt events have been generated
+	//DPE (0: Single Pulse Event triggered interrupt; 1: Double Pulse Event triggered interrupt)
+	//Pulse polarity positive
+   if (data_pulse_src == 0b11000000 || data_pulse_src == 0b11000100){ //Single tap Z-axis (pulse event  that triggered positive || pulse event that triggered negative)
+		 isDetected = 'Z';
+	 } else if (data_pulse_src == 0b10100000 || data_pulse_src == 0b10100010){ // /Single tap Y-axis
+		 isDetected = 'Y';
+	 }else if (data_pulse_src == 0b10010000 || data_pulse_src == 0b10010001){ // /Single tap X-axis	
+		 isDetected = 'X';
+	 }
+	return isDetected;	 
+}
+
 
 /*copy
 // activate free fall

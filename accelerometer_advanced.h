@@ -13,12 +13,14 @@ typedef struct {
 	  int rgb_readings[4];
 		char dominant_color;
 		int count_plant_falls;
+		uint16_t count_single_taps;
 } mail_t_advanced;
 
 enum PlantOrientation{UP,DOWN};
 
 typedef struct {
 		int count_plant_falls;
+		uint16_t count_single_taps;
 		PlantOrientation previousState;
 } PlantOrientationLog;
 

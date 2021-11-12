@@ -16,7 +16,7 @@ extern Si7021 tempHumSensor;
 extern Adafruit_GPS GPS_sensor;
 
 extern DigitalOut TestMode_LED, NormalMode_LED, AdvancedMode_LED;
-extern InterruptIn button;
+extern InterruptIn button, accel_interrupt;
 extern AnalogIn moistureSensor, lightSensor;
 extern BusOut RGB_LED;
 extern Ticker periodicMeasurement, halfHourTicker;

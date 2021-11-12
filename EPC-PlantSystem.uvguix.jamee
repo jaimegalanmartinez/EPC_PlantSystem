@@ -93,8 +93,8 @@
       <flags>2</flags>
       <showCmd>3</showCmd>
       <MinPosition>
-        <xPos>-1</xPos>
-        <yPos>-1</yPos>
+        <xPos>-32000</xPos>
+        <yPos>-32000</yPos>
       </MinPosition>
       <MaxPosition>
         <xPos>-1</xPos>
@@ -3607,7 +3607,7 @@
       <Doc>
         <Name>./main.cpp</Name>
         <ColumnNumber>0</ColumnNumber>
-        <TopLine>458</TopLine>
+        <TopLine>83</TopLine>
         <CurrentLine>506</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
@@ -3617,7 +3617,7 @@
         <Name>.\hardware.h</Name>
         <ColumnNumber>0</ColumnNumber>
         <TopLine>1</TopLine>
-        <CurrentLine>6</CurrentLine>
+        <CurrentLine>25</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
@@ -3626,7 +3626,7 @@
         <Name>.\hardware.cpp</Name>
         <ColumnNumber>28</ColumnNumber>
         <TopLine>1</TopLine>
-        <CurrentLine>7</CurrentLine>
+        <CurrentLine>22</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
@@ -3679,7 +3679,7 @@
       <Doc>
         <Name>.\log_values_sensors.cpp</Name>
         <ColumnNumber>0</ColumnNumber>
-        <TopLine>51</TopLine>
+        <TopLine>1</TopLine>
         <CurrentLine>52</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
@@ -3795,36 +3795,36 @@
       </Doc>
       <Doc>
         <Name>.\Accel_MMA8451Q\MMA8451Q.cpp</Name>
-        <ColumnNumber>23</ColumnNumber>
-        <TopLine>4</TopLine>
-        <CurrentLine>28</CurrentLine>
+        <ColumnNumber>4</ColumnNumber>
+        <TopLine>231</TopLine>
+        <CurrentLine>268</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
       </Doc>
       <Doc>
         <Name>.\accelerometer_advanced.cpp</Name>
-        <ColumnNumber>36</ColumnNumber>
-        <TopLine>1</TopLine>
-        <CurrentLine>21</CurrentLine>
+        <ColumnNumber>1</ColumnNumber>
+        <TopLine>2</TopLine>
+        <CurrentLine>34</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
       </Doc>
       <Doc>
         <Name>.\accelerometer_advanced.h</Name>
-        <ColumnNumber>21</ColumnNumber>
+        <ColumnNumber>31</ColumnNumber>
         <TopLine>1</TopLine>
-        <CurrentLine>2</CurrentLine>
+        <CurrentLine>23</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>
       </Doc>
       <Doc>
         <Name>.\Accel_MMA8451Q\MMA8451Q.h</Name>
-        <ColumnNumber>23</ColumnNumber>
-        <TopLine>1</TopLine>
-        <CurrentLine>126</CurrentLine>
+        <ColumnNumber>4</ColumnNumber>
+        <TopLine>58</TopLine>
+        <CurrentLine>180</CurrentLine>
         <Folding>1</Folding>
         <ContractedFolders></ContractedFolders>
         <PaneID>0</PaneID>

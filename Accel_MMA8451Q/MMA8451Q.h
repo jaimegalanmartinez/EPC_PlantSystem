@@ -141,6 +141,18 @@ public:
    */
  void setThreshold_z_tap(uint8_t threshold_value);
   /*
+	 * Configures the sensor to detect Single Tap
+	 */
+ void setupSingleTap();
+	/*
+	 * Disables Single Tap by disabling event flag in PULSE_CFG configuration register
+	 */
+ void disableSingleTap();
+ 	/*
+	 * Detects single tap by reading PULSE_SRC register
+	 */
+ char detectSingleTap();
+  /*
 	 * Configures the sensor to detect freefalls
 	 */
 	void initFreeFall();
@@ -160,6 +172,12 @@ private:
   void readRegs(int addr, uint8_t * data, int len);
   void writeRegs(uint8_t * data, int len);
   int16_t getAccAxis(uint8_t addr);
+	void setupPulseConfig(uint8_t data_value);
+  void setTimeLimitTapDetection(uint8_t data_value);
+	void setLatencyTimeTap(uint8_t data_value);
+	void enablePulseInterrupt(uint8_t data_value);
+	void routePulseInterruptBlock(uint8_t data_value);
+	//void detect_interrupt_generated();
  
 };
  

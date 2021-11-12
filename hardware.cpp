@@ -15,6 +15,7 @@ DigitalOut TestMode_LED(LED1);
 DigitalOut NormalMode_LED(LED2);
 DigitalOut AdvancedMode_LED(LED3);
 InterruptIn button(PB_2);
+InterruptIn accel_interrupt(PB_15);//INT1
 AnalogIn moistureSensor(PA_0);
 AnalogIn lightSensor(PA_4);
 BusOut RGB_LED(PH_0,PH_1,PB_13);
