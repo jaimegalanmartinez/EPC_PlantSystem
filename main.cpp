@@ -503,13 +503,3 @@ void GPS_and_print_info_system(void){
 	}	
 }
 
-#define PULSE_TMLT //time window
-//Threshold values to trigger tap event
-#define PULSE_THSX  //threshold_value_x
-#define PULSE_THSY  //threshold_value_y
-#define PULSE_THSZ //threshold_value_z
-#define PULSE_LTCY //Latency time to hold the event conditions
-
-void detect_tap_event(){
-	
-}

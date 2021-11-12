@@ -98,7 +98,48 @@ public:
    */
   float getAccZ();
  
-  
+  /**
+   * Get the value of the PULSE_THSX register
+   *
+   * @returns PULSE_THSX value
+   */
+ uint8_t getThreshold_x_tap();
+ 
+ /**
+   * Get the value of the PULSE_THSY register
+   *
+   * @returns PULSE_THSY value
+   */
+ uint8_t getThreshold_y_tap();
+ 
+ /**
+   * Get the value of the PULSE_THSZ register
+   *
+   * @returns PULSE_THSZ value
+   */
+ uint8_t getThreshold_z_tap();
+ 
+ /**
+   * Set the value of the PULSE_THSX register
+	 *	2g/0.063g/count = 32 counts 0x20
+	 *	3g/0.063g/count = 48 counts 0x30
+	 *  BIT 7 is always 0
+   */
+ void setThreshold_x_tap(uint8_t threshold_value);
+  /**
+   * Set the value of the PULSE_THSY register
+	 *	2g/0.063g/count = 32 counts
+	 *	3g/0.063g/count = 48 counts
+	 *  BIT 7 is always 0
+   */
+ void setThreshold_y_tap(uint8_t threshold_value);
+  /**
+   * Set the value of the PULSE_THSZ register
+	 *	2g/0.063g/count = 32 counts
+	 *	3g/0.063g/count = 48 counts
+	 *  BIT 7 is always 0
+   */
+ void setThreshold_z_tap(uint8_t threshold_value);
  
 private:
   I2C m_i2c;
