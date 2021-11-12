@@ -20,3 +20,4 @@ typedef struct {
 
 
 void updatePlantOrientation ( PlantOrientationLog *log, float accel_values[3]);
+

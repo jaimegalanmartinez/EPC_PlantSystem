@@ -136,9 +136,11 @@ int main() {
 				NormalMode_LED   = OFF;
 				AdvancedMode_LED = ON;
 				halfHourTicker.detach();
+				accel_sensor.initFreeFall();
 				half_hour_flag=false;
 				full_hour_flag=false;
 			}else if (mode == ADVANCED){//To TEST
+				accel_sensor.uninitFreeFall();
 				mode = TEST;
 				AdvancedMode_LED = OFF;
 				TestMode_LED = ON;
@@ -206,6 +208,9 @@ int main() {
 					mail_t *mail_data_sensor = (mail_t *) sensor_data_mail_box.try_get();
 					if(mail_data_sensor != NULL){
 						updatePlantOrientation(&plantLog,mail_data_sensor->accel_values);
+						if(accel_sensor.getFF()){
+							printf("\n\nFree fall occured\n\n");
+						}
 						put_sensor_data_to_print_mail_advanced(&plantLog,mail_data_sensor);
 					}
 					sensor_data_mail_box.free(mail_data_sensor);
