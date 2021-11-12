@@ -10,7 +10,7 @@
 #include "mbed.h"
 #include "hardware.h"
 #include "log_values_sensors.h"
-
+#include "accelerometer_advanced.h"
 #define PERIOD_HALF_HOUR  5000000//1800000000
 #define ON  1
 #define OFF 0
@@ -18,9 +18,12 @@
 //Event flags used to inform about messages to read 
 #define EV_FLAG_READ_SENSORS (1UL << 0) // 00000000000000000000000000000001
 #define EV_FLAG_PRINT_INFO (1UL << 9)
+#define EV_FLAG_PRINT_INFO_ADVANCED (1UL << 2)
 #define EV_FLAG_PRINT_INFO_LOGS (1UL << 1)
 #define SENSORS_READ_CADENCY_TEST 2000ms
 #define SENSORS_READ_CADENCY_NORMAL 2000ms //30s
+#define SENSORS_READ_CADENCY_ADVANCED 2000ms //30s
+
 //Stack size for threads
 #define STACK_SIZE_OUTPUT_THREAD 2048
 #define STACK_SIZE_MEASURE_THREAD 512
@@ -55,12 +58,15 @@ typedef struct {
 		char dominant_color;
 } mail_t_logs;
 
+
 //Mailbox for communicate the measure thread with the main thread
 Mail<mail_t, MAIL_QUEUE_SIZE> sensor_data_mail_box;
 //Mailbox for communicate the main thread with the output thread
 Mail<mail_t, MAIL_QUEUE_SIZE> print_mail_box;
 //Mailbox for communicate sensor_data logs the main thread with the output thread
 Mail<mail_t_logs, MAIL_QUEUE_SIZE> print_logs_mail_box;
+//Mailbox for communicate sensor_data logs the main thread with the output thread
+Mail<mail_t_advanced, MAIL_QUEUE_SIZE> print_mail_box_advanced;
 
 EventFlags event_flags;
 Mutex serial_mutex;
@@ -83,6 +89,7 @@ void set_color_RGB_led(char dominant_color);
 void put_sensor_data_on_Mailbox(void);
 void put_sensor_data_to_print_mail(mail_t *mail_data_sens);
 void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_color);
+void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens);
 char const* get_str_dominant_color(char dominant_color);
 //Thread tasks
 void measure_sensors(void);
@@ -95,7 +102,9 @@ int main() {
 	bool full_hour_flag = false;
 	initLog(&log_values);
 	uint32_t flags_read = 0;
-	
+	PlantOrientationLog plantLog;//Stores the status of the plant regarding the advanced mode
+	plantLog.count_plant_falls=0;
+	plantLog.previousState=UP;
 	//RGB_LED OFF
 	RGB_LED=0b000;
 	//User Button mode and fall interrupt
@@ -127,9 +136,11 @@ int main() {
 				NormalMode_LED   = OFF;
 				AdvancedMode_LED = ON;
 				halfHourTicker.detach();
+				accel_sensor.initFreeFall();
 				half_hour_flag=false;
 				full_hour_flag=false;
 			}else if (mode == ADVANCED){//To TEST
+				accel_sensor.uninitFreeFall();
 				mode = TEST;
 				AdvancedMode_LED = OFF;
 				TestMode_LED = ON;
@@ -188,7 +199,22 @@ int main() {
 					}
 			break;
 			case ADVANCED:
-				
+				flags_read = event_flags.wait_any(EV_FLAG_READ_SENSORS,0);
+			  
+				if(flags_read == EV_FLAG_READ_SENSORS){
+					event_flags.clear(EV_FLAG_READ_SENSORS);
+					//when it's received send event to output thread to print system info:
+					//Read mail_data from sensor mailbox (sensors data) and put it in print mailbox
+					mail_t *mail_data_sensor = (mail_t *) sensor_data_mail_box.try_get();
+					if(mail_data_sensor != NULL){
+						updatePlantOrientation(&plantLog,mail_data_sensor->accel_values);
+						if(accel_sensor.getFF()){
+							printf("\n\nFree fall occured\n\n");
+						}
+						put_sensor_data_to_print_mail_advanced(&plantLog,mail_data_sensor);
+					}
+					sensor_data_mail_box.free(mail_data_sensor);
+				}
 			break;
 		}//switch
 	}//while
@@ -382,6 +408,40 @@ void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_c
 		print_logs_mail_box.put(mail_data_print);
 		event_flags.set(EV_FLAG_PRINT_INFO_LOGS);	
 }
+/** TODO
+* Function put_sensor_data_to_print_mail_advanced
+* @param Log log_values Stores teh max, min, avg values of recorded measurements
+* @param char dominant_color has a 'R','G','B' or 'N' depending of the dominant color of that hour
+* Description:  Gets the log values of the main thread and dominant color of that hour and put them in on print mailbox
+* Finally, it activates event flag EV_FLAG_PRINT_INFO_LOGS to print the log.
+*/
+
+void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens){
+	
+		mail_t_advanced *mail_data_print_advanced = print_mail_box_advanced.try_calloc();
+		//Temp
+		mail_data_print_advanced->temperature = mail_data_sens->temperature;
+		//Humidity
+		mail_data_print_advanced->humidity = mail_data_sens->humidity;
+		//Light
+		mail_data_print_advanced->light = mail_data_sens->light;
+		//Moisture
+		mail_data_print_advanced->moisture = mail_data_sens->moisture;
+		//RGB
+		mail_data_print_advanced->rgb_readings[0] = mail_data_sens->rgb_readings[0];		//Clear
+		mail_data_print_advanced->rgb_readings[1] = mail_data_sens->rgb_readings[1];		//Red
+		mail_data_print_advanced->rgb_readings[2] = mail_data_sens->rgb_readings[2];		//Green
+		mail_data_print_advanced->rgb_readings[3] = mail_data_sens->rgb_readings[3];		//Blue
+		mail_data_print_advanced->dominant_color = mail_data_sens->dominant_color;
+		//Accelerometer
+		mail_data_print_advanced->accel_values[0] = mail_data_sens->accel_values[0]; // Accel x
+		mail_data_print_advanced->accel_values[1] = mail_data_sens->accel_values[1]; // Accel y
+		mail_data_print_advanced->accel_values[2] = mail_data_sens->accel_values[2]; // Accel z
+		//Plant orientaton ADVANCED
+		mail_data_print_advanced->count_plant_falls = advancedLog->count_plant_falls;
+		print_mail_box_advanced.put(mail_data_print_advanced);
+		event_flags.set(EV_FLAG_PRINT_INFO_ADVANCED);	
+}
 /*
  * Converts the 'R','G','B' or 'N' char to strings to later print the dominant color in serial
  */
@@ -419,7 +479,7 @@ void measure_sensors(void){
 	rgb_sensor.setWaitTime(1500);
 		
 	while(true) {
-		if(mode == TEST || mode == NORMAL){//If TEST or NORMAL, gets measurements
+		if(mode == TEST || mode == NORMAL|| mode == ADVANCED){//If TEST or NORMAL, gets measurements
 			put_sensor_data_on_Mailbox();
 		}
 		if(mode == TEST){
@@ -427,6 +487,7 @@ void measure_sensors(void){
 		}else if (mode == NORMAL){
 			ThisThread::sleep_for(SENSORS_READ_CADENCY_NORMAL);
 		} else if (mode == ADVANCED){
+			ThisThread::sleep_for(SENSORS_READ_CADENCY_ADVANCED);
 		}	
 	}
 }
@@ -460,12 +521,12 @@ void GPS_and_print_info_system(void){
 					;
 		}
 		//Reads if there is anything to print
-		flags_read_serial_th = event_flags.wait_any(EV_FLAG_PRINT_INFO | EV_FLAG_PRINT_INFO_LOGS,0);//Wait for flag to send the information
+		flags_read_serial_th = event_flags.wait_any(EV_FLAG_PRINT_INFO | EV_FLAG_PRINT_INFO_LOGS | EV_FLAG_PRINT_INFO_ADVANCED,0);//Wait for flag to send the information
 		
 		if(flags_read_serial_th == EV_FLAG_PRINT_INFO){
 			mail_t *mail_data_info = (mail_t *) print_mail_box.try_get();//Get sensors value
 			if (mail_data_info != NULL){
-			//Send information
+				//Modify hout to Madrid latitude
 			uint8_t local_time_hour = GPS_sensor.hour + 1; //UTC+1 (Madrid Winter time)
 			if(local_time_hour > 23) local_time_hour = 0;
 			char const *dominant_color = get_str_dominant_color(mail_data_info->dominant_color);
@@ -499,6 +560,27 @@ void GPS_and_print_info_system(void){
 				print_logs_mail_box.free(mail_data_logs);
 				event_flags.clear(EV_FLAG_PRINT_INFO_LOGS);
 			}
+		}
+		if(flags_read_serial_th == EV_FLAG_PRINT_INFO_ADVANCED){
+			mail_t_advanced *mail_data_info = (mail_t_advanced *) print_mail_box_advanced.try_get();//Get sensors value
+			if (mail_data_info != NULL){
+				//Modify hout to Madrid latitude
+			uint8_t local_time_hour = GPS_sensor.hour + 1; //UTC+1 (Madrid Winter time)
+			if(local_time_hour > 23) local_time_hour = 0;
+			char const *dominant_color = get_str_dominant_color(mail_data_info->dominant_color);
+			serial_mutex.lock();
+			printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
+				GPS_sensor.longitude/100,GPS_sensor.altitude,local_time_hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
+			printf("TEMP/HUM: Temperature: %.1f C, Relative Humidity: %.1f%%\n",mail_data_info->temperature,mail_data_info->humidity);
+			printf("ACCELEROMETER: X_axis=%.2fg, Y_axis=%.2fg, Z_axis=%.2fg\n",mail_data_info->accel_values[0],mail_data_info->accel_values[1],mail_data_info->accel_values[2]);
+			printf("LIGHT: %.1f%%\n",mail_data_info->light);
+			printf("SOIL MOISTURE: %.1f%%\n",mail_data_info->moisture);
+			printf("COLOR SENSOR: Clear=%d, Red=%d, Green=%d, Blue=%d   -- Dominant color: %s\n",mail_data_info->rgb_readings[0],mail_data_info->rgb_readings[1],mail_data_info->rgb_readings[2],mail_data_info->rgb_readings[3],dominant_color);      
+			printf("COUNT FALLS: %d\n\n",mail_data_info->count_plant_falls);
+			serial_mutex.unlock();
+			print_mail_box_advanced.free(mail_data_info);
+			event_flags.clear(EV_FLAG_PRINT_INFO_ADVANCED);
+			}				
 		}
 	}	
 }

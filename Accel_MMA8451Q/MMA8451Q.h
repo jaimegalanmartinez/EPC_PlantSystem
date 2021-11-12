@@ -140,6 +140,19 @@ public:
 	 *  BIT 7 is always 0
    */
  void setThreshold_z_tap(uint8_t threshold_value);
+  /*
+	 * Configures the sensor to detect freefalls
+	 */
+	void initFreeFall();
+	/**
+	 * Configures the sensor to not detect freefalls
+	 */
+	void uninitFreeFall();
+	/**
+	 * Reads if there was a freefall
+	 * Return: true if freefall happened
+	 */
+	bool getFF();
  
 private:
   I2C m_i2c;

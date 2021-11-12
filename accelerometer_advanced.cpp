@@ -2,9 +2,6 @@
 #include "hardware.h"
 #include "accelerometer_advanced.h"
 
-
-
-
 /*When configured for a single tap event, an interrupt is generated when the input acceleration on the selected axis exceeds
 the programmed threshold, and returns below it within a time window defined by PULSE_TMLT. If the ELE bit (bit 6) of the
 PULSE_CFG (Reg 0x21) register is not set, the interrupt is kept high for the duration of the Latency window PULSE_LTCY (Reg
@@ -31,5 +28,20 @@ void detect_tap_event(float accel_value_x, float accel_value_y, float accel_valu
 	}
 	if(accel_value_z > accel_sensor.getThreshold_z_tap()){
 		//tap detected in axis x
+	}
+}
+
+
+void updatePlantOrientation ( PlantOrientationLog *log, float accel_values[3])
+{
+	if(log->previousState==UP){//If plant was up
+		if( !(abs(accel_values[2]) > abs(accel_values[1])) || !(abs(accel_values[2]) > abs(accel_values[0]))){//If Z is not grater than X or Y
+			log->count_plant_falls++;
+			log->previousState=DOWN;
+		}
+	}else{//If plant was down
+		if( (abs(accel_values[2]) > abs(accel_values[1])) && (abs(accel_values[2]) > abs(accel_values[0]))){//If Z is grater than X or Y
+			log->previousState=UP;
+		}
 	}
 }

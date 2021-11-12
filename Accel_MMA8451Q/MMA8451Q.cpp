@@ -6,6 +6,13 @@
 #define REG_OUT_Y_MSB     0x03
 #define REG_OUT_Z_MSB     0x05
  
+#define FF_MT_CFG      0x15
+#define FF_MT_SRC       0x16
+#define FF_MT_THS        0x17
+#define FF_MT_COUNT         0x18
+#define FF_MT_CFG      0x15
+#define CTRL_REG4      0x2D
+#define CTRL_REG5      0x2E
 #define UINT14_MAX        16383
 
 /*Configures the event flag for the tap detection interrupt function for enabling/disabling single and double pulse on
@@ -45,7 +52,7 @@ The filter should help eliminate additional ringing after the tap signature is d
 
 MMA8451Q::MMA8451Q(PinName sda, PinName scl, int addr) : m_i2c(sda, scl), m_addr(addr) {
     // activate the peripheral
-    uint8_t data[2] = {REG_CTRL_REG_1, 0x01};
+    uint8_t data[2] = {REG_CTRL_REG_1, 0x01};//0x01 but 0x19
     writeRegs(data, 2);
 }
  
@@ -130,3 +137,56 @@ void MMA8451Q::setThreshold_z_tap(uint8_t threshold_value) {
   writeRegs(data, 2);
 }
 
+/*copy
+// activate free fall
+	uint8_t data0[2] = {REG_CTRL_REG_1, 0x20};//0x19
+  writeRegs(data0, 2);
+  uint8_t data[2] = {FF_MT_CFG, 0b10111000};
+	writeRegs(data,2);
+	uint8_t data2[2] = {FF_MT_THS, 0b00000011};
+	writeRegs(data2,2);
+	uint8_t data5[2] = {FF_MT_COUNT, 0x06};
+	writeRegs(data5,2);
+	uint8_t data4[2] = {CTRL_REG4, 0x04};
+	writeRegs(data4,2);
+	uint8_t data44[2] = {CTRL_REG5, 0x00};
+	writeRegs(data44,2);
+  uint8_t data6[2] = {REG_CTRL_REG_1, 0x01};//0x19
+  writeRegs(data6, 2);
+	*/
+void MMA8451Q::initFreeFall(){
+	// activate free fall
+	/*uint8_t data0[2] = {REG_CTRL_REG_1, 0x01};//0x19
+  writeRegs(data0, 2);*/
+  uint8_t data[2] = {FF_MT_CFG, 0b10111000};
+	writeRegs(data,2);
+	uint8_t data2[2] = {FF_MT_THS, 0b00000011};
+	writeRegs(data2,2);
+	/*uint8_t data3[2] = {FF_MT_COUNT, 0x0A};
+	writeRegs(data3,2);*/
+	uint8_t data5[2] = {FF_MT_COUNT, 0x06};
+	writeRegs(data5,2);
+	/*uint8_t data4[2] = {CTRL_REG4, 0x04};
+	writeRegs(data4,2);
+	uint8_t data44[2] = {CTRL_REG5, 0x00};
+	writeRegs(data44,2);*/
+  /*uint8_t data6[2] = {REG_CTRL_REG_1, 0x01};//0x19
+  writeRegs(data6, 2);*/
+}
+void MMA8451Q::uninitFreeFall(){
+	// activate free fall
+  uint8_t data[2] = {FF_MT_CFG, 0b00000000};
+	writeRegs(data,2);
+	uint8_t data2[2] = {FF_MT_THS, 0b00000000};
+	writeRegs(data2,2);
+}
+bool MMA8451Q::getFF(){
+	// activate free fall
+  uint8_t data[1] = {};
+	readRegs(FF_MT_SRC,data,1);
+	return (data[0] & 0b10000000);
+	/*uint8_t data2[2] = {FF_MT_THS, 0b00000110};
+	writeRegs(data2,2);
+	uint8_t data3[2] = {FF_MT_COUNT, 0x06};
+	writeRegs(data3,2);*/
+}
