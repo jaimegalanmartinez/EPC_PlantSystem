@@ -92,12 +92,11 @@ void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_c
 void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantTaps *plantTaps, uint32_t count_plant_freefalls);
 char const* get_str_dominant_color(char dominant_color);
 bool is_accel_interruptTap = false;
-bool is_accel_interruptFF = false;
 void ISR_accelTap();
 //Thread tasks
 void measure_sensors(void);
 void GPS_and_print_info_system(void);
-void ISR_accelFF(void);
+
 
 int main() {
 	Log log_values;//Global instance of the struct
@@ -121,7 +120,6 @@ int main() {
 	plantTaps.y_single_taps = 0;
 	plantTaps.z_single_taps = 0;
 	accel_interruptTap.rise(&ISR_accelTap);
-	accel_interruptFF.rise(&ISR_accelFF);
 	//Starting threads
 	measure_thread.start(callback(measure_sensors));
 	output_thread.start(callback(GPS_and_print_info_system));
@@ -210,38 +208,19 @@ int main() {
 					}
 			break;
 			case ADVANCED:
-				if(is_accel_interruptFF){
-					is_accel_interruptFF=false;
-					if(accel_sensor.getFF()){
-						count_plant_freefalls++;
-					}
-				}
 				if(is_accel_interruptTap) {
 							is_accel_interruptTap = false;
-							uint8_t interrupt_type = 0x01;//accel_sensor.detect_interrupt_generated();//0x01;//
-							
-							if (interrupt_type == 0x01) { //Single Tap
+							uint8_t interrupt_type = 0x01;//accel_sensor.detect_interrupt_generated();//0x01;
+							//Single Tap
 								plantTaps.count_single_taps++;
-								char axisTap = accel_sensor.detectSingleTap();
+								/*char axisTap = accel_sensor.detectSingleTap();
 								if (axisTap == 'X') {
 									plantTaps.x_single_taps++;
 								}else if (axisTap == 'Y'){
 									plantTaps.y_single_taps++;
 								}else if (axisTap == 'Z'){
 									plantTaps.z_single_taps++;
-								}
-								
-							} else if (interrupt_type == 0x02) { //Free fall
-								if(accel_sensor.getFF()){
-									count_plant_freefalls++;
-								}
-							} else if (interrupt_type == 0x03) { //Single tap and free fall events
-								plantTaps.count_single_taps++;
-								if(accel_sensor.getFF()){
-									count_plant_freefalls++;
-								}
-							}
-							
+								}*/
 				}
 				flags_read = event_flags.wait_any(EV_FLAG_READ_SENSORS,0);
 			  
@@ -257,7 +236,9 @@ int main() {
 							printf("\n\nFree fall occured\n\n");
 							serial_mutex.unlock();
 						}*/
-						
+						if(accel_sensor.getFF()){
+							count_plant_freefalls++;
+						}
 						
 						put_sensor_data_to_print_mail_advanced(&plantLog,mail_data_sensor, &plantTaps,count_plant_freefalls);
 					}
@@ -276,9 +257,6 @@ void half_hour_irq()
 void user_button()
 {
 		user_button_flag = true;
-}
-void ISR_accelFF(void){
-	is_accel_interruptFF=true;
 }
 /*
 	Normal ranges:

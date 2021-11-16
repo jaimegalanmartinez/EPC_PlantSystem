@@ -302,30 +302,19 @@ char MMA8451Q::detectSingleTap(void){
 	*/
 void MMA8451Q::initFreeFall(){
 	// activate free fall
-		uint8_t data_ctrl_reg[2] = {REG_CTRL_REG_1, 0x00};
+		uint8_t data_ctrl_reg[2] = {REG_CTRL_REG_1, 0x08};
 	writeRegs(data_ctrl_reg, 2);
 	/*uint8_t data0[2] = {REG_CTRL_REG_1, 0x01};//0x19
   writeRegs(data0, 2);*/
   uint8_t data[2] = {FF_MT_CFG, 0b10111000};
 	writeRegs(data,2);
-	uint8_t data2[2] = {FF_MT_THS, 0b00000100};
+	uint8_t data2[2] = {FF_MT_THS, 0b00000111};
 	writeRegs(data2,2);
 	/*uint8_t data3[2] = {FF_MT_COUNT, 0x0A};
 	writeRegs(data3,2);*/
 	uint8_t data5[2] = {FF_MT_COUNT, 0x06};//6
 	writeRegs(data5,2);
-	
-	
-	
-		uint8_t status_ctrl_reg1_ = 0;
-		readRegs(CTRL_REG4,&status_ctrl_reg1_, 1);
-		status_ctrl_reg1_ |= 0x04; //Bitwise OR, setting bit 0 to 1 (change mode to ACTIVE)
-		uint8_t data_ctrl_[2] = {CTRL_REG4, status_ctrl_reg1_}; //Put device in Active Mode
-		writeRegs(data_ctrl_, 2);
-	
-	/*
-	uint8_t data4[2] = {CTRL_REG4, 0x04};
-	writeRegs(data4,2);*/
+
 	/*uint8_t data44[2] = {CTRL_REG5, 0x00};
 	writeRegs(data44,2);*/
   /*uint8_t data6[2] = {REG_CTRL_REG_1, 0x01};//0x19
@@ -337,11 +326,20 @@ void MMA8451Q::initFreeFall(){
 	writeRegs(data_ctrl, 2);
 }
 void MMA8451Q::uninitFreeFall(){
-	// activate free fall
+		// activate free fall
+		uint8_t data_ctrl_reg[2] = {REG_CTRL_REG_1, 0x08};
+	writeRegs(data_ctrl_reg, 2);
+	// deactivate free fall
   uint8_t data[2] = {FF_MT_CFG, 0b00000000};
 	writeRegs(data,2);
 	uint8_t data2[2] = {FF_MT_THS, 0b00000000};
 	writeRegs(data2,2);
+	
+	uint8_t status_ctrl_reg1 = 0;
+	readRegs(REG_CTRL_REG_1,&status_ctrl_reg1, 1);
+	status_ctrl_reg1 |= 0x01; //Bitwise OR, setting bit 0 to 1 (change mode to ACTIVE)
+	uint8_t data_ctrl[2] = {REG_CTRL_REG_1, status_ctrl_reg1}; //Put device in Active Mode
+	writeRegs(data_ctrl, 2);
 }
 bool MMA8451Q::getFF(){
 	// activate free fall
