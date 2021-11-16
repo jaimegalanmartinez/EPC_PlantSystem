@@ -208,8 +208,8 @@ void MMA8451Q::setupSingleTap(){
 			2.65g/0.063g = 42 counts
 	*/
 		setThreshold_x_tap(0x19); //Set X Threshold to 1.575g
-		setThreshold_y_tap(0x19); //Set X Threshold to 1.575g
-		setThreshold_z_tap(0x2A); //Set Z Threshold to 2.65g
+		setThreshold_y_tap(0x19); //Set X Threshold to 1.575g//0x19
+		setThreshold_z_tap(0x19); //Set Z Threshold to 2.65g//(0x2A
 		//Set Time Limit for Tap Detection to 50 ms, Normal Mode, No LPF
 		//Data Rate 400 Hz, time step is 0.625 ms
 		//50 ms/0.625 ms = 80 counts  80 = 0x50
@@ -248,15 +248,15 @@ uint8_t MMA8451Q::detect_interrupt_generated(){
 	uint8_t interrupt_type = 0x00; //None interrupt
 	uint8_t interrupt_status_data = 0;
 	readRegs(REG_INT_SOURCE,&interrupt_status_data, 1);
-	if (interrupt_status_data == 0x08){ //SRC_PULSE = 1
+	if (interrupt_status_data & 0x08){ //SRC_PULSE = 1
 		//Interrupt was generated due to single and/or double pulse event
 		interrupt_type = 0x01;
 	}
-	if (interrupt_status_data == 0x04){ //SRC_FF_MT = 1
+	if (interrupt_status_data & 0x04){ //SRC_FF_MT = 1
 		//Indicates that the freefall/motion function interrupt is active
 		interrupt_type = 0x02;
 	}
-	if (interrupt_status_data == 0x0C){ //SRC_PULSE = 1 and SRC_FF_MT = 1
+	if (interrupt_status_data & 0x0C){ //SRC_PULSE = 1 and SRC_FF_MT = 1
 		interrupt_type = 0x03;
 	}
 	return interrupt_type;
@@ -302,22 +302,39 @@ char MMA8451Q::detectSingleTap(void){
 	*/
 void MMA8451Q::initFreeFall(){
 	// activate free fall
+		uint8_t data_ctrl_reg[2] = {REG_CTRL_REG_1, 0x00};
+	writeRegs(data_ctrl_reg, 2);
 	/*uint8_t data0[2] = {REG_CTRL_REG_1, 0x01};//0x19
   writeRegs(data0, 2);*/
   uint8_t data[2] = {FF_MT_CFG, 0b10111000};
 	writeRegs(data,2);
-	uint8_t data2[2] = {FF_MT_THS, 0b00000011};
+	uint8_t data2[2] = {FF_MT_THS, 0b00000100};
 	writeRegs(data2,2);
 	/*uint8_t data3[2] = {FF_MT_COUNT, 0x0A};
 	writeRegs(data3,2);*/
-	uint8_t data5[2] = {FF_MT_COUNT, 0x06};
+	uint8_t data5[2] = {FF_MT_COUNT, 0x06};//6
 	writeRegs(data5,2);
-	/*uint8_t data4[2] = {CTRL_REG4, 0x04};
-	writeRegs(data4,2);
-	uint8_t data44[2] = {CTRL_REG5, 0x00};
+	
+	
+	
+		uint8_t status_ctrl_reg1_ = 0;
+		readRegs(CTRL_REG4,&status_ctrl_reg1_, 1);
+		status_ctrl_reg1_ |= 0x04; //Bitwise OR, setting bit 0 to 1 (change mode to ACTIVE)
+		uint8_t data_ctrl_[2] = {CTRL_REG4, status_ctrl_reg1_}; //Put device in Active Mode
+		writeRegs(data_ctrl_, 2);
+	
+	/*
+	uint8_t data4[2] = {CTRL_REG4, 0x04};
+	writeRegs(data4,2);*/
+	/*uint8_t data44[2] = {CTRL_REG5, 0x00};
 	writeRegs(data44,2);*/
   /*uint8_t data6[2] = {REG_CTRL_REG_1, 0x01};//0x19
   writeRegs(data6, 2);*/
+		uint8_t status_ctrl_reg1 = 0;
+	readRegs(REG_CTRL_REG_1,&status_ctrl_reg1, 1);
+	status_ctrl_reg1 |= 0x01; //Bitwise OR, setting bit 0 to 1 (change mode to ACTIVE)
+	uint8_t data_ctrl[2] = {REG_CTRL_REG_1, status_ctrl_reg1}; //Put device in Active Mode
+	writeRegs(data_ctrl, 2);
 }
 void MMA8451Q::uninitFreeFall(){
 	// activate free fall

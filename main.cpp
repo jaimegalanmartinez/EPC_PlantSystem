@@ -89,14 +89,15 @@ void set_color_RGB_led(char dominant_color);
 void put_sensor_data_on_Mailbox(void);
 void put_sensor_data_to_print_mail(mail_t *mail_data_sens);
 void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_color);
-void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantTaps *plantTaps);
+void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantTaps *plantTaps, uint32_t count_plant_freefalls);
 char const* get_str_dominant_color(char dominant_color);
-bool is_accel_interrupt = false;
-void ISR_accel();
+bool is_accel_interruptTap = false;
+bool is_accel_interruptFF = false;
+void ISR_accelTap();
 //Thread tasks
 void measure_sensors(void);
 void GPS_and_print_info_system(void);
-
+void ISR_accelFF(void);
 
 int main() {
 	Log log_values;//Global instance of the struct
@@ -106,6 +107,7 @@ int main() {
 	uint32_t flags_read = 0;
 	PlantOrientationLog plantLog;//Stores the status of the plant regarding the advanced mode
 	plantLog.count_plant_falls=0;
+	uint32_t count_plant_freefalls=0;
 	plantLog.previousState=UP;
 	//RGB_LED OFF
 	RGB_LED=0b000;
@@ -118,7 +120,8 @@ int main() {
 	plantTaps.x_single_taps = 0;
 	plantTaps.y_single_taps = 0;
 	plantTaps.z_single_taps = 0;
-	accel_interrupt.rise(&ISR_accel);
+	accel_interruptTap.rise(&ISR_accelTap);
+	accel_interruptFF.rise(&ISR_accelFF);
 	//Starting threads
 	measure_thread.start(callback(measure_sensors));
 	output_thread.start(callback(GPS_and_print_info_system));
@@ -126,10 +129,6 @@ int main() {
 	TestMode_LED     = ON;
 	NormalMode_LED   = OFF;
 	AdvancedMode_LED = OFF;
-	//Set high interrupt
-	/*rgb_sensor.enableInterrupt();
-	rgb_sensor.setHighInterruptThreshold(20000);
-	rgb_sensor.setLowInterruptThreshold(100);*/
   while(true) {
 		//If button is pressed: Change mode
 		if(user_button_flag){
@@ -145,12 +144,13 @@ int main() {
 				NormalMode_LED   = OFF;
 				AdvancedMode_LED = ON;
 				halfHourTicker.detach();
-				//accel_sensor.initFreeFall();
+				
 				accel_sensor.setupSingleTap();
+				accel_sensor.initFreeFall();
 				half_hour_flag=false;
 				full_hour_flag=false;
 			}else if (mode == ADVANCED){//To TEST
-				//accel_sensor.uninitFreeFall();
+				accel_sensor.uninitFreeFall();
 				accel_sensor.disableSingleTap();
 				mode = TEST;
 				AdvancedMode_LED = OFF;
@@ -210,6 +210,39 @@ int main() {
 					}
 			break;
 			case ADVANCED:
+				if(is_accel_interruptFF){
+					is_accel_interruptFF=false;
+					if(accel_sensor.getFF()){
+						count_plant_freefalls++;
+					}
+				}
+				if(is_accel_interruptTap) {
+							is_accel_interruptTap = false;
+							uint8_t interrupt_type = 0x01;//accel_sensor.detect_interrupt_generated();//0x01;//
+							
+							if (interrupt_type == 0x01) { //Single Tap
+								plantTaps.count_single_taps++;
+								char axisTap = accel_sensor.detectSingleTap();
+								if (axisTap == 'X') {
+									plantTaps.x_single_taps++;
+								}else if (axisTap == 'Y'){
+									plantTaps.y_single_taps++;
+								}else if (axisTap == 'Z'){
+									plantTaps.z_single_taps++;
+								}
+								
+							} else if (interrupt_type == 0x02) { //Free fall
+								if(accel_sensor.getFF()){
+									count_plant_freefalls++;
+								}
+							} else if (interrupt_type == 0x03) { //Single tap and free fall events
+								plantTaps.count_single_taps++;
+								if(accel_sensor.getFF()){
+									count_plant_freefalls++;
+								}
+							}
+							
+				}
 				flags_read = event_flags.wait_any(EV_FLAG_READ_SENSORS,0);
 			  
 				if(flags_read == EV_FLAG_READ_SENSORS){
@@ -224,32 +257,9 @@ int main() {
 							printf("\n\nFree fall occured\n\n");
 							serial_mutex.unlock();
 						}*/
-						if(is_accel_interrupt) {
-							is_accel_interrupt = false;
-							uint8_t interrupt_type = 0x01;//accel_sensor.detect_interrupt_generated();
-							
-							if (interrupt_type == 0x01) { //Single Tap
-								plantTaps.count_single_taps++;
-								char axisTap = accel_sensor.detectSingleTap();
-								if (axisTap == 'X') {
-									plantTaps.x_single_taps++;
-								}else if (axisTap == 'Y'){
-									plantTaps.y_single_taps++;
-								}else if (axisTap == 'Z'){
-									plantTaps.z_single_taps++;
-								}
-								
-							} else if (interrupt_type == 0x02) { //Free fall
-								//bool ff_detected = accel_sensor.getFF();
-								
-							} else if (interrupt_type == 0x03) { //Single tap and free fall events
-								plantTaps.count_single_taps++;
-								//accel_sensor.getFF();
-								
-							}
-							
-						}
-						put_sensor_data_to_print_mail_advanced(&plantLog,mail_data_sensor, &plantTaps);
+						
+						
+						put_sensor_data_to_print_mail_advanced(&plantLog,mail_data_sensor, &plantTaps,count_plant_freefalls);
 					}
 					sensor_data_mail_box.free(mail_data_sensor);
 				}
@@ -267,7 +277,9 @@ void user_button()
 {
 		user_button_flag = true;
 }
-
+void ISR_accelFF(void){
+	is_accel_interruptFF=true;
+}
 /*
 	Normal ranges:
 Temperature: 18-28 C
@@ -454,7 +466,7 @@ void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_c
 * Finally, it activates event flag EV_FLAG_PRINT_INFO_LOGS to print the log.
 */
 
-void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantTaps* plantTaps){
+void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantTaps* plantTaps, uint32_t count_plant_freefalls){
 	
 		mail_t_advanced *mail_data_print_advanced = print_mail_box_advanced.try_calloc();
 		//Temp
@@ -477,6 +489,8 @@ void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, m
 		mail_data_print_advanced->accel_values[2] = mail_data_sens->accel_values[2]; // Accel z
 		//Plant orientaton ADVANCED
 		mail_data_print_advanced->count_plant_falls = advancedLog->count_plant_falls;
+		//Plant FreeFalls
+		mail_data_print_advanced->count_plant_freefalls = count_plant_freefalls;
 		//Single taps
 		mail_data_print_advanced->plantTaps.count_single_taps = plantTaps->count_single_taps;
 		mail_data_print_advanced->plantTaps.x_single_taps = plantTaps->x_single_taps;
@@ -505,8 +519,8 @@ char const* get_str_dominant_color(char dominant_color){
 	return color_dominant_detected;
 }
 
-void ISR_accel(){
-	is_accel_interrupt = true;
+void ISR_accelTap(){
+	is_accel_interruptTap = true;
 }
 ///////////////////////////////////////////////////////////////////////////////////
 //MEASURE THREAD 
@@ -622,7 +636,8 @@ void GPS_and_print_info_system(void){
 			printf("LIGHT: %.1f%%\n",mail_data_info->light);
 			printf("SOIL MOISTURE: %.1f%%\n",mail_data_info->moisture);
 			printf("COLOR SENSOR: Clear=%d, Red=%d, Green=%d, Blue=%d   -- Dominant color: %s\n",mail_data_info->rgb_readings[0],mail_data_info->rgb_readings[1],mail_data_info->rgb_readings[2],mail_data_info->rgb_readings[3],dominant_color);      
-			printf("COUNT FALLS: %d\n",mail_data_info->count_plant_falls);
+			printf("COUNT PLANT FALLS: %d\n",mail_data_info->count_plant_falls);
+			printf("COUNT FREEFALLS: %d\n",mail_data_info->count_plant_freefalls);
 			printf("SINGLE TAPS: %d\n", mail_data_info -> plantTaps.count_single_taps);
 			printf("X TAPS: %d\n", mail_data_info -> plantTaps.x_single_taps);
 			printf("Y TAPS: %d\n", mail_data_info -> plantTaps.y_single_taps);

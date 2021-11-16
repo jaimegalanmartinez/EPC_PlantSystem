@@ -21,6 +21,7 @@ typedef struct {
 		char dominant_color;
 		uint8_t count_plant_falls;
 		PlantTaps plantTaps;
+		uint8_t count_plant_freefalls;
 } mail_t_advanced;
 
 enum PlantOrientation{UP,DOWN};
