@@ -27,6 +27,12 @@ ASLP_RATE1 ASLP_RATE0 DR2 DR1 DR0 LNOISE F_READ ACTIVE
 Single Tap 0 1 0 1 0 1 0 1 -> 0x55 ALL AXES
 Double Tap 0 1 1 0 1 0 1 0 -> 0x6A
 Both S & D 0 1 1 1 1 1 1 1 ->
+When configured for a single tap event, an interrupt is generated when the input acceleration on the selected axis exceeds
+the programmed threshold, and returns below it within a time window defined by PULSE_TMLT. If the ELE bit (bit 6) of the
+PULSE_CFG (Reg 0x21) register is not set, the interrupt is kept high for the duration of the Latency window PULSE_LTCY (Reg
+0x27). The latency window is a user-definable period of delay after each pulse. This latency window applies either for single pulse
+or double pulse
+ If the ELE bit is set, the source register values will remain static until the PULSE_SRC (Reg 0x22) register is read
 */
 #define REG_PULSE_CFG	0x21 //ELE BIT 6
 

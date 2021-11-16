@@ -20,7 +20,6 @@ enum PlantOrientation{UP,DOWN};
 
 typedef struct {
 		int count_plant_falls;
-		uint16_t count_single_taps;
 		PlantOrientation previousState;
 } PlantOrientationLog;
 
