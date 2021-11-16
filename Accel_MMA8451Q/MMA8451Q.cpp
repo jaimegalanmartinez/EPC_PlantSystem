@@ -11,9 +11,9 @@ ASLP_RATE1 ASLP_RATE0 DR2 DR1 DR0 LNOISE F_READ ACTIVE
 #define REG_OUT_Z_MSB     0x05
  
 #define FF_MT_CFG      0x15
-#define FF_MT_SRC       0x16
-#define FF_MT_THS        0x17
-#define FF_MT_COUNT         0x18
+#define FF_MT_SRC      0x16
+#define FF_MT_THS      0x17
+#define FF_MT_COUNT    0x18
 #define FF_MT_CFG      0x15
 #define CTRL_REG4      0x2D
 #define CTRL_REG5      0x2E
@@ -74,6 +74,8 @@ or double pulse
 
 //Pulse detection interrupt enabled in CTRL_REG4 (Bit 3 activated)
 #define INT_EN_PULSE 0x08
+//Enable free fall and pulse detection in CTRL_REG4 (Bit 3 and Bit2 activated)
+#define INT_EN_TAP_FREE_FALL 0x0C
 
 //Set tap to INT1 (CTRL_REG5 BIT3 INT_CFG_PULSE = 1 -> INT1 
 //																INT_CFG_PULSE = 0 -> INT2
@@ -283,7 +285,7 @@ char MMA8451Q::detectSingleTap(void){
 }
 
 
-/*copy
+/*
 // activate free fall
 	uint8_t data0[2] = {REG_CTRL_REG_1, 0x20};//0x19
   writeRegs(data0, 2);
@@ -302,24 +304,21 @@ char MMA8451Q::detectSingleTap(void){
 	*/
 void MMA8451Q::initFreeFall(){
 	// activate free fall
-		uint8_t data_ctrl_reg[2] = {REG_CTRL_REG_1, 0x08};
+	//Set standby-mode and 400Hz
+	uint8_t data_ctrl_reg[2] = {REG_CTRL_REG_1, 0x08};
 	writeRegs(data_ctrl_reg, 2);
-	/*uint8_t data0[2] = {REG_CTRL_REG_1, 0x01};//0x19
-  writeRegs(data0, 2);*/
+	
   uint8_t data[2] = {FF_MT_CFG, 0b10111000};
 	writeRegs(data,2);
 	uint8_t data2[2] = {FF_MT_THS, 0b00000111};
 	writeRegs(data2,2);
-	/*uint8_t data3[2] = {FF_MT_COUNT, 0x0A};
-	writeRegs(data3,2);*/
 	uint8_t data5[2] = {FF_MT_COUNT, 0x06};//6
 	writeRegs(data5,2);
-
-	/*uint8_t data44[2] = {CTRL_REG5, 0x00};
-	writeRegs(data44,2);*/
-  /*uint8_t data6[2] = {REG_CTRL_REG_1, 0x01};//0x19
-  writeRegs(data6, 2);*/
-		uint8_t status_ctrl_reg1 = 0;
+	//Route INT1 to System Interrupt
+	enablePulseInterrupt(INT_EN_TAP_FREE_FALL); //0x0C Enable TAP and FREE FALL Interrupt Block in System CTRL_REG4
+	routePulseInterruptBlock(ENABLE_INT1); //0x08 Route FF Interrupt Block to INT2 hardware Pin
+	//Put the device in ActiveMode
+	uint8_t status_ctrl_reg1 = 0;
 	readRegs(REG_CTRL_REG_1,&status_ctrl_reg1, 1);
 	status_ctrl_reg1 |= 0x01; //Bitwise OR, setting bit 0 to 1 (change mode to ACTIVE)
 	uint8_t data_ctrl[2] = {REG_CTRL_REG_1, status_ctrl_reg1}; //Put device in Active Mode

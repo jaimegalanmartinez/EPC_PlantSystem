@@ -6,10 +6,8 @@
 
 typedef struct {
 	uint8_t count_single_taps;
-	uint8_t x_single_taps;
-	uint8_t y_single_taps;
-	uint8_t z_single_taps;
-} PlantTaps;
+	uint8_t count_plant_freefalls;
+} PlantEvents;
 
 typedef struct {
 		float temperature;
@@ -20,8 +18,7 @@ typedef struct {
 	  int rgb_readings[4];
 		char dominant_color;
 		uint8_t count_plant_falls;
-		PlantTaps plantTaps;
-		uint8_t count_plant_freefalls;
+		PlantEvents plantEvents;
 } mail_t_advanced;
 
 enum PlantOrientation{UP,DOWN};
@@ -31,7 +28,13 @@ typedef struct {
 		PlantOrientation previousState;
 } PlantOrientationLog;
 
-
+/**
+* Updates the plant orientation based in accelerometer values.
+* If plant was up
+* 	and If absolute value Z is not greater than X or Y - plant orientation = DOWN
+* If plant was down
+* 	If Z is greater than X or Y - plant orientation = UP
+*/
 void updatePlantOrientation ( PlantOrientationLog *log, float accel_values[3]);
 
 #endif

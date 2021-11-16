@@ -1,16 +1,18 @@
 # Plant IoT Monitoring System
+Final project of Embedded platforms and communications for IoT course. MSc IoT UPM 2021.
 
+## Objectives
+The main goal of this project is to develop an IoT system allowing environmental conditions and the health 
+of a plant throughout its life. For example, this will enable vendors to adjust the final price of unique plants, 
+like bonsais or very delicate plants, for which the environmental conditions they have suffered throughout 
+their lives are crucial. The system could also be useful as a monitoring system in greenhouses by monitoring 
+several plants randomly. 
 
+### Authors
 
+* Jaime Galán Martínez
+* Víctor Aranda López.
 
-
-## Related Links
-
-* [Mbed OS Stats API](https://os.mbed.com/docs/latest/apis/mbed-statistics.html).
-* [Mbed OS Configuration](https://os.mbed.com/docs/latest/reference/configuration.html).
-* [Mbed OS Serial Communication](https://os.mbed.com/docs/latest/tutorials/serial-communication.html).
-* [Mbed OS bare metal](https://os.mbed.com/docs/mbed-os/latest/reference/mbed-os-bare-metal.html).
-* [Mbed boards](https://os.mbed.com/platforms/).
 
 ### License and contributions
 
