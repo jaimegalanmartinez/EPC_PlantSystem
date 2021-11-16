@@ -89,7 +89,7 @@ void set_color_RGB_led(char dominant_color);
 void put_sensor_data_on_Mailbox(void);
 void put_sensor_data_to_print_mail(mail_t *mail_data_sens);
 void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_color);
-void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, uint16_t count_single_taps);
+void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantTaps *plantTaps);
 char const* get_str_dominant_color(char dominant_color);
 bool is_accel_interrupt = false;
 void ISR_accel();
@@ -113,8 +113,12 @@ int main() {
 	button.mode(PullUp);
 	button.fall(&user_button);
 	//Accel interrupt INT1
+	PlantTaps plantTaps;
+	plantTaps.count_single_taps = 0;
+	plantTaps.x_single_taps = 0;
+	plantTaps.y_single_taps = 0;
+	plantTaps.z_single_taps = 0;
 	accel_interrupt.rise(&ISR_accel);
-	volatile uint16_t count_single_taps = 0;
 	//Starting threads
 	measure_thread.start(callback(measure_sensors));
 	output_thread.start(callback(GPS_and_print_info_system));
@@ -222,9 +226,30 @@ int main() {
 						}*/
 						if(is_accel_interrupt) {
 							is_accel_interrupt = false;
-							count_single_taps++;
+							uint8_t interrupt_type = 0x01;//accel_sensor.detect_interrupt_generated();
+							
+							if (interrupt_type == 0x01) { //Single Tap
+								plantTaps.count_single_taps++;
+								char axisTap = accel_sensor.detectSingleTap();
+								if (axisTap == 'X') {
+									plantTaps.x_single_taps++;
+								}else if (axisTap == 'Y'){
+									plantTaps.y_single_taps++;
+								}else if (axisTap == 'Z'){
+									plantTaps.z_single_taps++;
+								}
+								
+							} else if (interrupt_type == 0x02) { //Free fall
+								//bool ff_detected = accel_sensor.getFF();
+								
+							} else if (interrupt_type == 0x03) { //Single tap and free fall events
+								plantTaps.count_single_taps++;
+								//accel_sensor.getFF();
+								
+							}
+							
 						}
-						put_sensor_data_to_print_mail_advanced(&plantLog,mail_data_sensor, count_single_taps);
+						put_sensor_data_to_print_mail_advanced(&plantLog,mail_data_sensor, &plantTaps);
 					}
 					sensor_data_mail_box.free(mail_data_sensor);
 				}
@@ -429,7 +454,7 @@ void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_c
 * Finally, it activates event flag EV_FLAG_PRINT_INFO_LOGS to print the log.
 */
 
-void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, uint16_t count_single_taps){
+void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantTaps* plantTaps){
 	
 		mail_t_advanced *mail_data_print_advanced = print_mail_box_advanced.try_calloc();
 		//Temp
@@ -453,7 +478,10 @@ void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, m
 		//Plant orientaton ADVANCED
 		mail_data_print_advanced->count_plant_falls = advancedLog->count_plant_falls;
 		//Single taps
-		mail_data_print_advanced->count_single_taps = count_single_taps;
+		mail_data_print_advanced->plantTaps.count_single_taps = plantTaps->count_single_taps;
+		mail_data_print_advanced->plantTaps.x_single_taps = plantTaps->x_single_taps;
+		mail_data_print_advanced->plantTaps.y_single_taps = plantTaps->y_single_taps;
+		mail_data_print_advanced->plantTaps.z_single_taps = plantTaps->z_single_taps;
 		print_mail_box_advanced.put(mail_data_print_advanced);
 		event_flags.set(EV_FLAG_PRINT_INFO_ADVANCED);	
 }
@@ -595,7 +623,10 @@ void GPS_and_print_info_system(void){
 			printf("SOIL MOISTURE: %.1f%%\n",mail_data_info->moisture);
 			printf("COLOR SENSOR: Clear=%d, Red=%d, Green=%d, Blue=%d   -- Dominant color: %s\n",mail_data_info->rgb_readings[0],mail_data_info->rgb_readings[1],mail_data_info->rgb_readings[2],mail_data_info->rgb_readings[3],dominant_color);      
 			printf("COUNT FALLS: %d\n",mail_data_info->count_plant_falls);
-			printf("SINGLE TAPS: %d\n\n", mail_data_info -> count_single_taps);
+			printf("SINGLE TAPS: %d\n", mail_data_info -> plantTaps.count_single_taps);
+			printf("X TAPS: %d\n", mail_data_info -> plantTaps.x_single_taps);
+			printf("Y TAPS: %d\n", mail_data_info -> plantTaps.y_single_taps);
+			printf("Z TAPS: %d\n\n", mail_data_info -> plantTaps.z_single_taps);
 			serial_mutex.unlock();
 			print_mail_box_advanced.free(mail_data_info);
 			event_flags.clear(EV_FLAG_PRINT_INFO_ADVANCED);

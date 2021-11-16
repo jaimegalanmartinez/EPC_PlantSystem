@@ -243,18 +243,25 @@ void MMA8451Q::disableSingleTap(){
 	writeRegs(data_ctrl, 2);
 }
 
-/*void MMA8451Q::detect_interrupt_generated(){
+uint8_t MMA8451Q::detect_interrupt_generated(){
 	//READ System Interrupt Status Source Register 0x0C
+	uint8_t interrupt_type = 0x00; //None interrupt
 	uint8_t interrupt_status_data = 0;
 	readRegs(REG_INT_SOURCE,&interrupt_status_data, 1);
 	if (interrupt_status_data == 0x08){ //SRC_PULSE = 1
 		//Interrupt was generated due to single and/or double pulse event
-		
-	}else if (interrupt_status_data == 0x04){ //SRC_FF_MT = 1
-		//Indicates that the freefall/motion function interrupt is active
+		interrupt_type = 0x01;
 	}
+	if (interrupt_status_data == 0x04){ //SRC_FF_MT = 1
+		//Indicates that the freefall/motion function interrupt is active
+		interrupt_type = 0x02;
+	}
+	if (interrupt_status_data == 0x0C){ //SRC_PULSE = 1 and SRC_FF_MT = 1
+		interrupt_type = 0x03;
+	}
+	return interrupt_type;
 }
-*/
+
 
 char MMA8451Q::detectSingleTap(void){
 	char isDetected = 'N'; //not detected
